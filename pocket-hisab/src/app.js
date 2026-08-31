@@ -11,13 +11,36 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const { apiReference } = require('@scalar/express-api-reference');
 
 const env = require('./config/env');
 const apiRouter = require('./routes');
+const openapiSpec = require('./docs/openapi');
 const notFoundHandler = require('./middleware/notFoundHandler');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
+
+// --- API documentation (Scalar) -----------------------------------------
+// Registered BEFORE helmet() on purpose: helmet's default Content-Security-
+// Policy (script-src/style-src 'self') would block the Scalar UI, which
+// loads its renderer bundle from a CDN and injects inline styles/scripts to
+// draw the page. Docs are public, unauthenticated, read-only documentation
+// (no user data, no cookies) — mounting them ahead of the restrictive CSP is
+// a deliberate, low-risk trade-off rather than an oversight.
+//
+// GET /openapi.json - the raw OpenAPI 3.1 document (useful for Postman
+//                      import, client codegen, or any other tool).
+// GET /docs          - the interactive Scalar documentation UI, rendered
+//                      client-side from that same document.
+app.get('/openapi.json', (req, res) => res.json(openapiSpec));
+app.use(
+  '/docs',
+  apiReference({
+    pageTitle: 'PocketHisab API Reference',
+    content: openapiSpec,
+  })
+);
 
 // --- Security headers -------------------------------------------------
 app.use(helmet());

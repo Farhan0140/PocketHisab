@@ -80,6 +80,23 @@ Confirm it's up:
 curl http://localhost:3000/health
 ```
 
+### 6. API documentation
+
+Interactive, browsable documentation (built with [Scalar](https://scalar.com)) is served
+straight from the running server — no separate build step:
+
+- **`GET /docs`** — the interactive API reference UI. Every endpoint, request/response
+  schema, and business rule (balance computation, debt status rules, overpayment guards,
+  etc.) is documented here, grouped by resource, with a "Try it" panel for making live
+  requests (paste a Firebase ID token into the Authorization field to call authenticated
+  endpoints directly from the page).
+- **`GET /openapi.json`** — the raw OpenAPI 3.1 document behind that UI, for importing into
+  Postman/Insomnia or feeding into a codegen tool.
+
+Both are public and unauthenticated by design. The spec source lives in `src/docs/` (one
+file per resource under `src/docs/paths/`, shared schemas under `src/docs/components/`) —
+keep it in sync whenever a route, validator, or business rule changes.
+
 ## Authenticating requests
 
 Every endpoint under `/api/v1` requires `Authorization: Bearer <Firebase ID token>`. The
