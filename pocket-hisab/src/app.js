@@ -11,7 +11,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const { apiReference } = require('@scalar/express-api-reference');
+const swaggerUi = require('swagger-ui-express');
 
 const env = require('./config/env');
 const apiRouter = require('./routes');
@@ -21,26 +21,24 @@ const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
-// --- API documentation (Scalar) -----------------------------------------
+// --- API documentation (Swagger UI) -------------------------------------
 // Registered BEFORE helmet() on purpose: helmet's default Content-Security-
-// Policy (script-src/style-src 'self') would block the Scalar UI, which
-// loads its renderer bundle from a CDN and injects inline styles/scripts to
-// draw the page. Docs are public, unauthenticated, read-only documentation
-// (no user data, no cookies) — mounting them ahead of the restrictive CSP is
-// a deliberate, low-risk trade-off rather than an oversight.
+// Policy blocks the inline <script> Swagger UI uses to boot itself (no
+// 'unsafe-inline' by default). Docs are public, unauthenticated, read-only
+// documentation (no user data, no cookies) — mounting them ahead of the
+// restrictive CSP is a deliberate, low-risk trade-off rather than an
+// oversight.
 //
 // GET /openapi.json - the raw OpenAPI 3.1 document (useful for Postman
 //                      import, client codegen, or any other tool).
-// GET /docs          - the interactive Scalar documentation UI, rendered
-//                      client-side from that same document.
+// GET /docs          - the interactive Swagger UI, rendered from that same
+//                      document. Every endpoint has a "Try it out" button —
+//                      click "Authorize" and paste a Firebase ID token to
+//                      call authenticated endpoints straight from the page.
 app.get('/openapi.json', (req, res) => res.json(openapiSpec));
-app.use(
-  '/docs',
-  apiReference({
-    pageTitle: 'PocketHisab API Reference',
-    content: openapiSpec,
-  })
-);
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec, {
+  customSiteTitle: 'PocketHisab API Reference',
+}));
 
 // --- Security headers -------------------------------------------------
 app.use(helmet());

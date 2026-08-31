@@ -3,8 +3,8 @@
 //
 // Assembles the complete OpenAPI 3.1 document for the PocketHisab API from
 // the schema/path fragments in ./components and ./paths, and is what
-// src/app.js hands to Scalar (via @scalar/express-api-reference) to render
-// the interactive documentation UI at GET /docs, and serves as raw JSON at
+// src/app.js hands to Swagger UI (via swagger-ui-express) to render the
+// interactive documentation UI at GET /docs, and serves as raw JSON at
 // GET /openapi.json for any other tool (Postman import, codegen, etc.).
 //
 // Kept as a single source of truth: every field name, validation rule, and
