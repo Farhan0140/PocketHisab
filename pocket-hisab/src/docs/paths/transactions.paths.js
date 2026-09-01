@@ -134,7 +134,12 @@ module.exports = {
       description:
         'Paginated, filterable list of the current user\'s transactions, most recent ' +
         '`transaction_date` first. `search` performs a case-insensitive partial match ' +
-        'against the `note` field.',
+        'against the `note` field. Each row also embeds its category\'s `category_name` / ' +
+        '`category_icon` / `category_color` (LEFT JOINed, same as ' +
+        'GET /dashboard/recent-activity) so the client never has to separately look up ' +
+        'category details — and deliberately WITHOUT filtering on the category\'s ' +
+        '`is_active` flag, so a transaction whose category has since been soft-deleted ' +
+        'still displays with its original name/icon/color here.',
       parameters: [
         {
           name: 'type',
@@ -157,9 +162,23 @@ module.exports = {
       ],
       responses: {
         200: {
-          description: 'A page of transactions.',
+          description: 'A page of transactions, each with its category embedded.',
           content: {
-            'application/json': { schema: paginatedEnvelope({ $ref: '#/components/schemas/Transaction' }) },
+            'application/json': {
+              schema: paginatedEnvelope({
+                allOf: [
+                  { $ref: '#/components/schemas/Transaction' },
+                  {
+                    type: 'object',
+                    properties: {
+                      category_name: { type: 'string', nullable: true, example: 'Food' },
+                      category_icon: { type: 'string', nullable: true, example: '🍔' },
+                      category_color: { type: 'string', nullable: true, example: '#F97316' },
+                    },
+                  },
+                ],
+              }),
+            },
           },
         },
         400: commonErrorResponses[400],

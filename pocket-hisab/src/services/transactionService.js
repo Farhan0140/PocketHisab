@@ -39,6 +39,16 @@ async function assertCategoryUsable(categoryId, userId) {
 /**
  * Lists a user's transactions with optional filters + pagination.
  *
+ * The category is LEFT JOINed in and its name/icon/color are embedded
+ * directly on each row (category_name/category_icon/category_color),
+ * exactly like GET /dashboard/recent-activity already does — deliberately
+ * NOT filtered by `categories.is_active`. A soft-deleted category (see
+ * categoryService.remove — deletion never touches the categories row or any
+ * transaction, it only flips is_active) must keep showing its original
+ * name/icon/color on every transaction that already referenced it; only
+ * "pick a category for a NEW transaction" pickers should ever hide inactive
+ * categories, and this list is history, not a picker.
+ *
  * @param {string} userId
  * @param {{ type?, category_id?, start_date?, end_date?, search? }} filters
  * @param {{ limit: number, offset: number }} pagination
@@ -46,22 +56,30 @@ async function assertCategoryUsable(categoryId, userId) {
  */
 async function list(userId, filters, pagination) {
   const applyFilters = (query) => {
-    query = query.where({ user_id: userId });
-    if (filters.type) query = query.andWhere('type', filters.type);
-    if (filters.category_id) query = query.andWhere('category_id', filters.category_id);
-    if (filters.start_date) query = query.andWhere('transaction_date', '>=', filters.start_date);
-    if (filters.end_date) query = query.andWhere('transaction_date', '<=', filters.end_date);
-    if (filters.search) query = query.andWhere('note', 'ilike', `%${filters.search}%`);
+    query = query.where('transactions.user_id', userId);
+    if (filters.type) query = query.andWhere('transactions.type', filters.type);
+    if (filters.category_id) query = query.andWhere('transactions.category_id', filters.category_id);
+    if (filters.start_date) query = query.andWhere('transactions.transaction_date', '>=', filters.start_date);
+    if (filters.end_date) query = query.andWhere('transactions.transaction_date', '<=', filters.end_date);
+    if (filters.search) query = query.andWhere('transactions.note', 'ilike', `%${filters.search}%`);
     return query;
   };
 
+  const baseQuery = () => knex('transactions').leftJoin('categories', 'transactions.category_id', 'categories.id');
+
   const [rows, [{ count }]] = await Promise.all([
-    applyFilters(knex('transactions'))
-      .orderBy('transaction_date', 'desc')
-      .orderBy('id', 'desc')
+    applyFilters(baseQuery())
+      .orderBy('transactions.transaction_date', 'desc')
+      .orderBy('transactions.id', 'desc')
       .limit(pagination.limit)
-      .offset(pagination.offset),
-    applyFilters(knex('transactions')).count({ count: '*' }),
+      .offset(pagination.offset)
+      .select(
+        'transactions.*',
+        'categories.name as category_name',
+        'categories.icon as category_icon',
+        'categories.color as category_color'
+      ),
+    applyFilters(baseQuery()).count({ count: 'transactions.id' }),
   ]);
 
   return { rows, totalCount: Number(count) };

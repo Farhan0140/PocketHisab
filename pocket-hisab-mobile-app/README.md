@@ -1,50 +1,103 @@
-# Welcome to your Expo app 👋
+# PocketHisab Mobile App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A React Native (Expo Router + TypeScript) client for the PocketHisab personal-finance API —
+banking-app aesthetic, Firebase Authentication, and an offline-first data layer built on
+TanStack Query.
 
-## Get started
+## Stack
 
-1. Install dependencies
+- **Framework**: Expo SDK 54 (React Native 0.81, React 19), file-based routing via
+  `expo-router`
+- **Auth**: Firebase Authentication (Email/Password), via the `firebase` JS SDK
+- **Data layer**: TanStack Query, with its cache persisted to `AsyncStorage` and connectivity
+  wired to `@react-native-community/netinfo` — writes fired while offline pause automatically
+  and resume the moment connectivity returns (see `src/query/queryClient.ts`)
+- **Bottom sheet**: `@gorhom/bottom-sheet` (the Add/Spend Money flow)
 
-   ```bash
-   npm install
-   ```
+## Project layout
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+app/                        # expo-router screens (file-based routing)
+├── (auth)/                  # login, register, forgot-password — shown when signed out
+├── (tabs)/                   # Home, History, Debts, Savings, Settings — shown when signed in
+└── _layout.tsx                # root: QueryProvider > AuthProvider > BottomSheetModalProvider
+src/
+├── api/                      # typed fetch client + one endpoint file per backend resource
+├── auth/                      # Firebase init, AuthProvider (context)
+├── query/                      # QueryClient/persister setup + one hook file per resource
+├── components/
+│   ├── ui/                     # design-system primitives (Button, Card, Chip, ...)
+│   ├── home/                    # Home-screen-specific components
+│   └── transactions/             # Add/Spend sheet, numeric keypad, category picker
+├── types/api.ts                 # TS mirrors of the backend's response shapes
+└── utils/                        # currency/date formatting, Firebase error messages
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Setup
 
-## Learn more
+### 1. Install dependencies
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npm install
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### 2. Configure environment variables
 
-## Join the community
+`.env` already exists with the Neon/Firebase client config pre-filled. Two things to check:
 
-Join our community of developers creating universal apps.
+- **`EXPO_PUBLIC_API_BASE_URL`** — must point somewhere your phone/emulator can actually
+  reach the backend (see the comments in `.env.example` for the right value per platform:
+  `localhost` for web, `10.0.2.2` for the Android emulator, your machine's LAN IP for a
+  physical device over Expo Go).
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### 3. Make sure the backend is running
+
+The app needs `pocket-hisab` (the Express API) running and reachable at
+`EXPO_PUBLIC_API_BASE_URL`, with its own Firebase Admin credentials configured — see
+`../pocket-hisab/README.md`.
+
+### 4. Start the app
+
+```bash
+npx expo start
+```
+
+Then press `a` (Android emulator), `w` (web), or scan the QR code with Expo Go on a physical
+device (same Wi-Fi network as your dev machine).
+
+## What's built (Phase 1)
+
+- Firebase auth: register, login, forgot-password (Email/Password only)
+- Home: Total Balance (live, gradient card), Add Money / Spend Money quick actions,
+  Today/Month/Year stat cards, Recent Activity
+- Add/Spend Money: bottom-sheet with a calculator-style numeric keypad, category chips
+  (expense only, with an inline "create category" flow), and a "New balance: X → Confirm"
+  preview before submitting
+- History: segmented Day/Month/Year filter, search, grouped by date ("Today", "Yesterday",
+  "28 Aug", ...)
+- Settings: profile (name/currency) editing, log out
+- Offline-first data layer: query cache persisted to disk, connectivity-aware pause/resume
+  for writes, optimistic balance/activity updates on transaction create
+
+**Debts, Reminders, and Savings Pots are placeholder tabs** — full screens for those are
+Phase 2, per the agreed build plan.
+
+## Verified so far
+
+- `npx tsc --noEmit` — clean, no type errors
+- `npx expo lint` — clean
+- `npx expo export --platform android` — bundles successfully (1653 modules, no resolution
+  errors)
+
+Not yet verified: an actual on-device/emulator run (needs a connected device or emulator,
+which wasn't available in the environment these files were built in) — please run
+`npx expo start` and click through the login → Add Money → History flow to confirm it
+matches the design before I continue to Phase 2.
+
+## Known setup gotcha
+
+`metro.config.js` disables `unstable_enablePackageExports`. This is required for the
+`firebase` JS SDK to resolve correctly on React Native — without it, Firebase Auth throws
+"Component auth has not been registered yet" at runtime. Don't remove this unless you've
+confirmed Firebase still resolves correctly without it (a known, actively-tracked upstream
+issue between Firebase's package exports and Metro).
