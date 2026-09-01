@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { Radius, Spacing } from '@/constants/theme';
 import { TextField } from '@/src/components/ui/TextField';
 import { Button } from '@/src/components/ui/Button';
 import { useCreateCategory, useUpdateCategory } from '@/src/query/hooks/useCategories';
+import { ApiError } from '@/src/api/client';
 import type { Category } from '@/src/types/api';
 
 const ICON_OPTIONS = ['📦', '🎁', '🐾', '✈️', '🏋️', '🎮', '📱', '🧴', '🚗', '🎓'];
@@ -41,18 +42,35 @@ export function CategoryFormModal({ visible, onClose, editingCategory, onCreated
     }
   }, [visible, editingCategory]);
 
-  async function handleSubmit() {
+  // Deliberately NOT awaited: with React Query's default networkMode
+  // ('online'), a mutation fired while offline stays PAUSED until
+  // connectivity returns — awaiting it here would leave this modal open
+  // indefinitely with no feedback, which is exactly what made category
+  // create/edit look "broken offline". The modal closes immediately; the
+  // onCreated/onUpdated callbacks still fire once the write actually
+  // completes (instantly online, or after reconnect if it was queued).
+  function handleSubmit() {
     if (isEditing && editingCategory) {
-      await updateCategory.mutateAsync({ id: editingCategory.id, input: { name: name.trim(), icon, color } });
-      onUpdated?.();
+      updateCategory.mutate(
+        { id: editingCategory.id, input: { name: name.trim(), icon, color } },
+        {
+          onSuccess: () => onUpdated?.(),
+          onError: (error) =>
+            Alert.alert('Could not save this category', error instanceof ApiError ? error.message : 'Please try again.'),
+        }
+      );
     } else {
-      const result = await createCategory.mutateAsync({ name: name.trim(), icon, color });
-      onCreated?.(result.data.id);
+      createCategory.mutate(
+        { name: name.trim(), icon, color },
+        {
+          onSuccess: (result) => onCreated?.(result.data.id),
+          onError: (error) =>
+            Alert.alert('Could not create this category', error instanceof ApiError ? error.message : 'Please try again.'),
+        }
+      );
     }
     onClose();
   }
-
-  const isPending = createCategory.isPending || updateCategory.isPending;
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -95,7 +113,6 @@ export function CategoryFormModal({ visible, onClose, editingCategory, onCreated
               label={isEditing ? 'Save' : 'Create'}
               onPress={handleSubmit}
               disabled={!name.trim()}
-              loading={isPending}
               style={styles.actionButton}
             />
           </View>

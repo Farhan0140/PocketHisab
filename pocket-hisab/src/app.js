@@ -16,6 +16,7 @@ const swaggerUi = require('swagger-ui-express');
 const env = require('./config/env');
 const apiRouter = require('./routes');
 const openapiSpec = require('./docs/openapi');
+const requestLogger = require('./middleware/requestLogger');
 const notFoundHandler = require('./middleware/notFoundHandler');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -54,9 +55,14 @@ app.use(cors({ origin: env.corsOrigin }));
 app.use(express.json());
 
 // --- Request logging -------------------------------------------------------
-// Skip noisy request logs in production; use a concise "dev" format locally.
+// Skip verbose request logs in production. Locally, morgan prints a quick
+// one-line summary per request (for scanning a busy terminal at a glance),
+// and requestLogger prints the full request/response detail underneath it
+// (headers, request body, response body) — see that file for why full body
+// logging is dev-only.
 if (!env.isProduction) {
   app.use(morgan('dev'));
+  app.use(requestLogger);
 }
 
 // --- Health check ------------------------------------------------------

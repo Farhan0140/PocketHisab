@@ -49,8 +49,11 @@ export default function CategoryDetailScreen() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: async () => {
-          await deleteCategory.mutateAsync(category!.id);
+        // Not awaited — see AddSpendSheet's handleConfirm for why: awaiting
+        // would leave this screen stuck if offline. Navigate back right
+        // away; the delete completes now (online) or on reconnect.
+        onPress: () => {
+          deleteCategory.mutate(category!.id);
           router.back();
         },
       },

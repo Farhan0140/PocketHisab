@@ -32,15 +32,18 @@ export function LogRepaymentModal({
   const numericAmount = Number(amount) || 0;
   const canSubmit = numericAmount > 0 && numericAmount <= remaining;
 
-  async function handleSubmit() {
-    try {
-      await addRepayment.mutateAsync({ id: debt.id, input: { amount: numericAmount, note: note.trim() || null } });
-      setAmount('');
-      setNote('');
-      onClose();
-    } catch (error) {
-      Alert.alert('Could not log repayment', error instanceof ApiError ? error.message : 'Please try again.');
-    }
+  // Not awaited — see AddSpendSheet's handleConfirm for why.
+  function handleSubmit() {
+    addRepayment.mutate(
+      { id: debt.id, input: { amount: numericAmount, note: note.trim() || null } },
+      {
+        onError: (error) =>
+          Alert.alert('Could not log repayment', error instanceof ApiError ? error.message : 'Please try again.'),
+      }
+    );
+    setAmount('');
+    setNote('');
+    onClose();
   }
 
   return (
@@ -71,7 +74,6 @@ export function LogRepaymentModal({
               label="Log repayment"
               onPress={handleSubmit}
               disabled={!canSubmit}
-              loading={addRepayment.isPending}
               style={styles.actionButton}
             />
           </View>

@@ -20,16 +20,22 @@ export default function SettingsScreen() {
   const text = useThemeColor({}, 'text');
   const textSecondary = useThemeColor({}, 'textSecondary');
 
-  async function handleSave() {
-    try {
-      await updateProfile.mutateAsync({
+  // Not awaited — see AddSpendSheet's handleConfirm for why: with the
+  // default networkMode, mutate() stays PAUSED while offline rather than
+  // resolving or rejecting, so awaiting it here left "Save changes" stuck
+  // spinning forever with no feedback. onSuccess/onError still fire
+  // correctly whenever the write actually completes (now, or on reconnect).
+  function handleSave() {
+    updateProfile.mutate(
+      {
         name: name.trim() || undefined,
         currency: currency.trim() || undefined,
-      });
-      Alert.alert('Saved', 'Your profile has been updated.');
-    } catch {
-      Alert.alert('Something went wrong', 'Could not save your changes. Please try again.');
-    }
+      },
+      {
+        onSuccess: () => Alert.alert('Saved', 'Your profile has been updated.'),
+        onError: () => Alert.alert('Something went wrong', 'Could not save your changes. Please try again.'),
+      }
+    );
   }
 
   function handleSignOut() {

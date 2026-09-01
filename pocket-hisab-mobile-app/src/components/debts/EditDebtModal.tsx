@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Modal, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, StyleSheet, Text, View } from 'react-native';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { Radius, Spacing } from '@/constants/theme';
 import { TextField } from '@/src/components/ui/TextField';
 import { DateField } from '@/src/components/ui/DateField';
 import { Button } from '@/src/components/ui/Button';
 import { useUpdateDebt } from '@/src/query/hooks/useDebts';
+import { ApiError } from '@/src/api/client';
 import type { Debt } from '@/src/types/api';
 
 export function EditDebtModal({ visible, onClose, debt }: { visible: boolean; onClose: () => void; debt: Debt }) {
@@ -25,15 +26,22 @@ export function EditDebtModal({ visible, onClose, debt }: { visible: boolean; on
     }
   }, [visible, debt]);
 
-  async function handleSave() {
-    await updateDebt.mutateAsync({
-      id: debt.id,
-      input: {
-        person_name: personName.trim(),
-        note: note.trim() || null,
-        due_date: dueDate ? dueDate.toISOString().slice(0, 10) : null,
+  // Not awaited — see AddSpendSheet's handleConfirm for why.
+  function handleSave() {
+    updateDebt.mutate(
+      {
+        id: debt.id,
+        input: {
+          person_name: personName.trim(),
+          note: note.trim() || null,
+          due_date: dueDate ? dueDate.toISOString().slice(0, 10) : null,
+        },
       },
-    });
+      {
+        onError: (error) =>
+          Alert.alert('Could not save this debt', error instanceof ApiError ? error.message : 'Please try again.'),
+      }
+    );
     onClose();
   }
 
@@ -53,7 +61,6 @@ export function EditDebtModal({ visible, onClose, debt }: { visible: boolean; on
               label="Save"
               onPress={handleSave}
               disabled={!personName.trim()}
-              loading={updateDebt.isPending}
               style={styles.actionButton}
             />
           </View>

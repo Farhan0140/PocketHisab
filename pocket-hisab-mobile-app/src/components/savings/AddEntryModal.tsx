@@ -35,16 +35,19 @@ export function AddEntryModal({
   const isWithdrawal = type === 'withdrawal';
   const canSubmit = numericAmount > 0 && (!isWithdrawal || numericAmount <= currentAmount);
 
-  async function handleSubmit() {
-    try {
-      await addEntry.mutateAsync({ id: pot.id, input: { type, amount: numericAmount, note: note.trim() || null } });
-      setAmount('');
-      setNote('');
-      setType('deposit');
-      onClose();
-    } catch (error) {
-      Alert.alert('Could not save this entry', error instanceof ApiError ? error.message : 'Please try again.');
-    }
+  // Not awaited — see AddSpendSheet's handleConfirm for why.
+  function handleSubmit() {
+    addEntry.mutate(
+      { id: pot.id, input: { type, amount: numericAmount, note: note.trim() || null } },
+      {
+        onError: (error) =>
+          Alert.alert('Could not save this entry', error instanceof ApiError ? error.message : 'Please try again.'),
+      }
+    );
+    setAmount('');
+    setNote('');
+    setType('deposit');
+    onClose();
   }
 
   return (
@@ -83,7 +86,6 @@ export function AddEntryModal({
               variant={isWithdrawal ? 'expense' : 'income'}
               onPress={handleSubmit}
               disabled={!canSubmit}
-              loading={addEntry.isPending}
               style={styles.actionButton}
             />
           </View>

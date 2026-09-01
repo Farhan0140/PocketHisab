@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { Spacing } from '@/constants/theme';
@@ -19,7 +19,8 @@ import { formatFullDate } from '@/src/utils/date';
 export default function DebtDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const debtId = Number(id);
-  const { data: debt, isLoading } = useDebt(debtId);
+  const debtQuery = useDebt(debtId);
+  const debt = debtQuery.data;
   const deleteDebt = useDeleteDebt();
   const { profile } = useAuth();
   const currency = profile?.currency ?? 'BDT';
@@ -31,11 +32,39 @@ export default function DebtDetailScreen() {
   const textSecondary = useThemeColor({}, 'textSecondary');
   const income = useThemeColor({}, 'income');
 
-  if (isLoading || !debt) {
+  // isError means the server genuinely returned 404 (or another failure) —
+  // ONLY that means "not found". A query with no data yet is either still
+  // loading, or PAUSED because the device is offline and this debt was
+  // never fetched on it before (see useDebt's initialData) — neither of
+  // those means the debt doesn't exist, so they get their own messaging
+  // instead of a false "not found".
+  if (debtQuery.isError) {
     return (
       <ScreenContainer>
         <Stack.Screen options={{ title: 'Debt' }} />
-        {!isLoading ? <EmptyState icon="🔍" title="Debt not found" /> : null}
+        <EmptyState icon="🔍" title="Debt not found" />
+      </ScreenContainer>
+    );
+  }
+
+  if (!debt && debtQuery.fetchStatus === 'paused') {
+    return (
+      <ScreenContainer>
+        <Stack.Screen options={{ title: 'Debt' }} />
+        <EmptyState
+          icon="📡"
+          title="Waiting to reconnect"
+          subtitle="This debt hasn't loaded on this device yet — it'll appear as soon as you're back online."
+        />
+      </ScreenContainer>
+    );
+  }
+
+  if (!debt) {
+    return (
+      <ScreenContainer style={styles.centered}>
+        <Stack.Screen options={{ title: 'Debt' }} />
+        <ActivityIndicator />
       </ScreenContainer>
     );
   }
@@ -46,8 +75,9 @@ export default function DebtDetailScreen() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: async () => {
-          await deleteDebt.mutateAsync(debt!.id);
+        // Not awaited — see AddSpendSheet's handleConfirm for why.
+        onPress: () => {
+          deleteDebt.mutate(debt!.id);
           router.back();
         },
       },
@@ -112,6 +142,7 @@ export default function DebtDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  centered: { alignItems: 'center', justifyContent: 'center' },
   list: { padding: Spacing.lg },
   headerSection: { gap: Spacing.md, marginBottom: Spacing.md },
   summaryCard: { gap: 4 },

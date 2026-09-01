@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { Radius, Spacing } from '@/constants/theme';
 import { TextField } from '@/src/components/ui/TextField';
 import { Button } from '@/src/components/ui/Button';
 import { useCreateSavingsPot, useUpdateSavingsPot } from '@/src/query/hooks/useSavingsPots';
+import { ApiError } from '@/src/api/client';
 import type { SavingsPot } from '@/src/types/api';
 
 const ICON_OPTIONS = ['🏦', '🏠', '🚨', '✈️', '🎓', '💍', '🚗', '🎁', '💻', '🏥'];
@@ -36,16 +37,18 @@ export function PotFormModal({
     }
   }, [visible, editingPot]);
 
-  async function handleSubmit() {
+  // Not awaited — see AddSpendSheet's handleConfirm for why.
+  function handleSubmit() {
+    const onError = (error: unknown) =>
+      Alert.alert('Could not save this pot', error instanceof ApiError ? error.message : 'Please try again.');
+
     if (isEditing && editingPot) {
-      await updatePot.mutateAsync({ id: editingPot.id, input: { title: title.trim(), icon } });
+      updatePot.mutate({ id: editingPot.id, input: { title: title.trim(), icon } }, { onError });
     } else {
-      await createPot.mutateAsync({ title: title.trim(), icon });
+      createPot.mutate({ title: title.trim(), icon }, { onError });
     }
     onClose();
   }
-
-  const isPending = createPot.isPending || updatePot.isPending;
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -74,7 +77,6 @@ export function PotFormModal({
               label={isEditing ? 'Save' : 'Create'}
               onPress={handleSubmit}
               disabled={!title.trim()}
-              loading={isPending}
               style={styles.actionButton}
             />
           </View>

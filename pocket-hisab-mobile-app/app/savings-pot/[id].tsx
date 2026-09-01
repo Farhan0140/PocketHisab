@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { Spacing } from '@/constants/theme';
@@ -17,7 +17,8 @@ import { formatFullDate } from '@/src/utils/date';
 export default function SavingsPotDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const potId = Number(id);
-  const { data: pot, isLoading } = useSavingsPot(potId);
+  const potQuery = useSavingsPot(potId);
+  const pot = potQuery.data;
   const deletePot = useDeleteSavingsPot();
   const { profile } = useAuth();
   const currency = profile?.currency ?? 'BDT';
@@ -31,11 +32,35 @@ export default function SavingsPotDetailScreen() {
   const expense = useThemeColor({}, 'expense');
   const primary = useThemeColor({}, 'primary');
 
-  if (isLoading || !pot) {
+  // See app/debt/[id].tsx for why these three states are distinguished:
+  // only isError genuinely means "not found".
+  if (potQuery.isError) {
     return (
       <ScreenContainer>
         <Stack.Screen options={{ title: 'Savings Pot' }} />
-        {!isLoading ? <EmptyState icon="🔍" title="Pot not found" /> : null}
+        <EmptyState icon="🔍" title="Pot not found" />
+      </ScreenContainer>
+    );
+  }
+
+  if (!pot && potQuery.fetchStatus === 'paused') {
+    return (
+      <ScreenContainer>
+        <Stack.Screen options={{ title: 'Savings Pot' }} />
+        <EmptyState
+          icon="📡"
+          title="Waiting to reconnect"
+          subtitle="This pot hasn't loaded on this device yet — it'll appear as soon as you're back online."
+        />
+      </ScreenContainer>
+    );
+  }
+
+  if (!pot) {
+    return (
+      <ScreenContainer style={styles.centered}>
+        <Stack.Screen options={{ title: 'Savings Pot' }} />
+        <ActivityIndicator />
       </ScreenContainer>
     );
   }
@@ -46,8 +71,9 @@ export default function SavingsPotDetailScreen() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: async () => {
-          await deletePot.mutateAsync(pot!.id);
+        // Not awaited — see AddSpendSheet's handleConfirm for why.
+        onPress: () => {
+          deletePot.mutate(pot!.id);
           router.back();
         },
       },
@@ -101,6 +127,7 @@ export default function SavingsPotDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  centered: { alignItems: 'center', justifyContent: 'center' },
   list: { padding: Spacing.lg },
   headerSection: { gap: Spacing.md, marginBottom: Spacing.md },
   summaryCard: { alignItems: 'center', gap: 4 },

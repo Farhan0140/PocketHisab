@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { Spacing } from '@/constants/theme';
 import { ScreenContainer } from '@/src/components/ui/ScreenContainer';
@@ -22,11 +23,26 @@ export default function DebtsScreen() {
   const { profile } = useAuth();
   const currency = profile?.currency ?? 'BDT';
 
-  const { data } = useDebts(status === 'all' ? {} : { status });
-  const { data: upcoming = [] } = useUpcomingDebts(14);
-  const debts = data?.data ?? [];
+  // Fetched ONCE regardless of which tab is selected — filtering by status
+  // happens locally below, against the effective `status` field the
+  // backend already computed on each debt. Previously each tab
+  // (?status=pending / ?status=overdue / ?status=paid) was a SEPARATE
+  // server query with its own cache entry; switching to a tab that had
+  // never been individually fetched while online showed nothing at all
+  // once offline, since that specific query had no cached data to fall
+  // back on. A single query that's always cached, filtered in memory,
+  // makes every tab work offline the moment the debts list has loaded once.
+  const debtsQuery = useDebts({ limit: 100 });
+  const upcomingQuery = useUpcomingDebts(14);
+  const debts = useMemo(() => {
+    const allDebts = debtsQuery.data?.data ?? [];
+    return status === 'all' ? allDebts : allDebts.filter((debt) => debt.status === status);
+  }, [debtsQuery.data, status]);
+  const upcoming = upcomingQuery.data ?? [];
 
+  const queryClient = useQueryClient();
   const text = useThemeColor({}, 'text');
+  const primary = useThemeColor({}, 'primary');
 
   return (
     <ScreenContainer>
@@ -38,6 +54,13 @@ export default function DebtsScreen() {
         data={debts}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.list}
+        refreshControl={
+          <RefreshControl
+            refreshing={debtsQuery.isRefetching || upcomingQuery.isRefetching}
+            onRefresh={() => queryClient.invalidateQueries({ queryKey: ['debts'] })}
+            tintColor={primary}
+          />
+        }
         ListHeaderComponent={
           <View style={styles.listHeader}>
             <UpcomingDebtsWidget debts={upcoming} currency={currency} />

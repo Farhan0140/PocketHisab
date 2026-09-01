@@ -6,6 +6,7 @@ import { DateField } from '@/src/components/ui/DateField';
 import { TextField } from '@/src/components/ui/TextField';
 import { Button } from '@/src/components/ui/Button';
 import { useCreateReminder, useDeleteReminder, useReminders } from '@/src/query/hooks/useReminders';
+import { ApiError } from '@/src/api/client';
 
 export function RemindersSection({ debtId, personName }: { debtId: number; personName: string }) {
   const { data: allReminders = [] } = useReminders();
@@ -25,9 +26,16 @@ export function RemindersSection({ debtId, personName }: { debtId: number; perso
   const background = useThemeColor({}, 'background');
   const expense = useThemeColor({}, 'expense');
 
-  async function handleAdd() {
+  // Not awaited — see AddSpendSheet's handleConfirm for why.
+  function handleAdd() {
     if (!remindAt) return;
-    await createReminder.mutateAsync({ debt_id: debtId, remind_at: remindAt.toISOString(), message: message.trim() });
+    createReminder.mutate(
+      { debt_id: debtId, remind_at: remindAt.toISOString(), message: message.trim() },
+      {
+        onError: (error) =>
+          Alert.alert('Could not add this reminder', error instanceof ApiError ? error.message : 'Please try again.'),
+      }
+    );
     setRemindAt(null);
     setAddVisible(false);
   }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { Spacing } from '@/constants/theme';
 import { ScreenContainer } from '@/src/components/ui/ScreenContainer';
@@ -18,10 +19,11 @@ export default function SavingsScreen() {
   const { profile } = useAuth();
   const currency = profile?.currency ?? 'BDT';
 
-  const { data } = useSavingsPots();
-  const pots = data?.data ?? [];
-  const totalSaved = (data?.meta as { total_saved?: number } | null)?.total_saved ?? 0;
+  const potsQuery = useSavingsPots();
+  const pots = potsQuery.data?.data ?? [];
+  const totalSaved = (potsQuery.data?.meta as { total_saved?: number } | null)?.total_saved ?? 0;
 
+  const queryClient = useQueryClient();
   const text = useThemeColor({}, 'text');
   const textSecondary = useThemeColor({}, 'textSecondary');
   const primary = useThemeColor({}, 'primary');
@@ -38,6 +40,13 @@ export default function SavingsScreen() {
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
         contentContainerStyle={styles.list}
+        refreshControl={
+          <RefreshControl
+            refreshing={potsQuery.isRefetching}
+            onRefresh={() => queryClient.invalidateQueries({ queryKey: ['savings-pots'] })}
+            tintColor={primary}
+          />
+        }
         ListHeaderComponent={
           <Card style={styles.totalCard}>
             <Text style={[styles.totalLabel, { color: textSecondary }]}>Total Savings</Text>
