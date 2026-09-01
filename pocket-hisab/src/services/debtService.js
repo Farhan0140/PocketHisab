@@ -162,7 +162,7 @@ async function getUpcoming(userId, days) {
   const rows = await knex('debts')
     .where({ user_id: userId })
     .andWhere('remaining_amount', '>', 0)
-    .andWhereNotNull('due_date')
+    .whereNotNull('due_date')
     .andWhereRaw(`due_date <= CURRENT_DATE + (?::int * interval '1 day')`, [days])
     .orderBy('due_date', 'asc');
 
