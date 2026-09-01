@@ -13,7 +13,7 @@
 //      the request body, only from this verified token.
 // ============================================================================
 
-const { admin, isConfigured } = require('../config/firebase');
+const { auth, isConfigured } = require('../config/firebase');
 const userService = require('../services/userService');
 const { UnauthorizedError, ApiError } = require('../utils/ApiError');
 const asyncHandler = require('./asyncHandler');
@@ -39,7 +39,7 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
 
   let decodedToken;
   try {
-    decodedToken = await admin.auth().verifyIdToken(token);
+    decodedToken = await auth.verifyIdToken(token);
   } catch (err) {
     throw new UnauthorizedError('Invalid or expired authentication token.');
   }

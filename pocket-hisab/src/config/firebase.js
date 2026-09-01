@@ -17,19 +17,30 @@
 // requests with a clear error rather than crashing the whole server on
 // boot. This lets migrations, /health, and any future public routes keep
 // working while Firebase credentials are still being set up.
+//
+// NOTE ON THE IMPORT STYLE: firebase-admin v12+ removed the old namespaced
+// compat API (`admin.credential.cert(...)`, `admin.auth()`) from the plain
+// `require('firebase-admin')` export — it now only exposes
+// initializeApp/getApp/cert/etc. The SDK's documented replacement is the
+// "modular" API, imported from its subpaths instead:
+// `firebase-admin/app` and `firebase-admin/auth`.
 // ============================================================================
 
-const admin = require('firebase-admin');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
 const env = require('../config/env');
 const logger = require('../utils/logger');
 
 const { projectId, clientEmail, privateKey } = env.firebase;
 const isConfigured = Boolean(projectId && clientEmail && privateKey);
 
+// `auth` stays null until credentials are supplied; authMiddleware checks
+// `isConfigured` before ever touching it.
+let auth = null;
+
 if (isConfigured) {
-  admin.initializeApp({
-    credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
-  });
+  const app = initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
+  auth = getAuth(app);
 } else {
   logger.warn(
     'Firebase Admin credentials are not set (FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / ' +
@@ -39,6 +50,6 @@ if (isConfigured) {
 }
 
 module.exports = {
-  admin,
+  auth,
   isConfigured,
 };
