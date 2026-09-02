@@ -1,21 +1,23 @@
 /**
- * Learn more about light and dark modes:
- * https://docs.expo.dev/guides/color-schemes/
+ * Resolves a single color token against the user's current theme (mode +
+ * accent — see src/theme/ThemeProvider.tsx). `props.light`/`props.dark`
+ * still let an individual call override the resolved color for one specific
+ * scheme, same as before.
  */
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/src/theme/ThemeProvider';
+import type { ColorTokens } from '@/constants/theme';
 
 export function useThemeColor(
   props: { light?: string; dark?: string },
-  colorName: keyof typeof Colors.light & keyof typeof Colors.dark
+  colorName: keyof ColorTokens
 ) {
-  const theme = useColorScheme() ?? 'light';
-  const colorFromProps = props[theme];
+  const { colorScheme, colors } = useAppTheme();
+  const colorFromProps = props[colorScheme];
 
   if (colorFromProps) {
     return colorFromProps;
   } else {
-    return Colors[theme][colorName];
+    return colors[colorName];
   }
 }

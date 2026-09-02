@@ -3,12 +3,11 @@ import { ActivityIndicator, View } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/src/theme/ThemeProvider';
 import { useAuth } from '@/src/auth/AuthProvider';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { colors } = useAppTheme();
   const { firebaseUser, isAuthLoading } = useAuth();
 
   if (isAuthLoading) {
@@ -26,7 +25,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: colors.tint,
         headerShown: false,
         tabBarButton: HapticTab,
       }}>
