@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "pocket-hisab-mobile-app",
-    "slug": "pocket-hisab-mobile-app",
+    "name": "Pocket Hisab",
+    "slug": "pocket-hisab",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.carbon_mama.pockethisabmobileapp"
     },
     "web": {
       "output": "static",
@@ -44,6 +45,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b433b648-29d4-4aa7-907c-d63ba3e4812c"
+      }
     }
   }
 }

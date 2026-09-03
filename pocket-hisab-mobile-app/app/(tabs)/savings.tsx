@@ -40,6 +40,7 @@ export default function SavingsScreen() {
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
         contentContainerStyle={styles.list}
+        ItemSeparatorComponent={() => <View style={styles.rowSeparator} />}
         refreshControl={
           <RefreshControl
             refreshing={potsQuery.isRefetching}
@@ -76,6 +77,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: '800' },
   list: { padding: Spacing.lg, paddingTop: 0, flexGrow: 1 },
   columnWrapper: { gap: Spacing.sm },
+  rowSeparator: { height: Spacing.sm },
   totalCard: { alignItems: 'center', gap: 2, marginBottom: Spacing.md },
   totalLabel: { fontSize: 13, fontWeight: '600' },
   totalValue: { fontSize: 28, fontWeight: '800' },
